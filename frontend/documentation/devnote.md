@@ -3,6 +3,6 @@
     - learning git add, git commit, git push (basic git skill)
     - hi im doing this on my own (this is git commit specifically in docs)
 # 28-06-2026
-    -
+    - created the choosen reference web in vscode for the first time
     -
     -
