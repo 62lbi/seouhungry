@@ -15,3 +15,11 @@
 
 ## DIFFICULTIES
     - When i first opened vscode, the bash cd was not in frontend so i had trouble doing npm run dev
+
+# 29-06-2026
+    - Extended landing page, user now can scroll down to see further about "What Makes Our Service Different?"
+    -
+    -
+
+## DIFFICULTIES
+    - I forgot the syntax of npm run dev to see the live web
