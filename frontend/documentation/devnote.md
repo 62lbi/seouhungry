@@ -23,3 +23,28 @@
 
 ## DIFFICULTIES
     - I forgot the syntax of npm run dev to see the live web
+
+# 30-06-2026
+    - added authentication (user login and register)
+    -
+    -
+
+## DIFFICULTIES
+    - i forgot to update documentations and now im catching things up on july 1st
+
+# 01-07-2026
+    - Added the menu page
+    - Navigation bar changes and also removing Page nav
+    - Responsive web display for users that has different devices
+
+## DIFFICULTIES
+    - When i did the menu page and added a background image, the image that was put was high resolution and made the web laggy so i changed the background image
+
+# 02-07-2026
+    -
+    -
+    -
+
+## DIFFICULTIES
+    -
+    -
