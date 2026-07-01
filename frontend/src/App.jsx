@@ -1,29 +1,42 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 function App() {
   // ================= STATE FOR PROTOTYPE NAVIGATION =================
-  // Options: "home", "login", "register"
+  // Managed routes: "home", "about", "menu", "contact", "login", "register"
   const [currentPage, setCurrentPage] = useState("home");
-
-  // Hardcoded mock credentials for prototype testing
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
 
+  // Track scroll state to transition fixed navbar styling
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 50) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const handleLoginSubmit = (e) => {
     e.preventDefault();
     alert(`Logged in successfully as: ${email}`);
-    setCurrentPage("home"); // Redirect back to home after mock success
+    setCurrentPage("home");
   };
 
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
     alert(`Account created successfully for: ${name}`);
-    setCurrentPage("login"); // Redirect to login page after mock signup
+    setCurrentPage("login");
   };
 
-  // ================= SLIDER DATA =================
+  // ================= EXTENDED DATABASE WITH IDR PRICING =================
   const nutritionItems = [
     {
       title: "Grilled Chicken Salad",
@@ -33,6 +46,7 @@ function App() {
       carbs: "15g",
       fat: "18g",
       extra: "Fiber: 5g",
+      price: "Rp 42.000",
       description: "High in protein and fiber, good for muscle growth and digestion.",
     },
     {
@@ -43,6 +57,7 @@ function App() {
       carbs: "40g",
       fat: "22g",
       extra: "Omega-3: High",
+      price: "Rp 52.000",
       description: "Rich in omega-3 and protein, supports heart and brain health.",
     },
     {
@@ -53,6 +68,7 @@ function App() {
       carbs: "30g",
       fat: "6g",
       extra: "Sugar: 14g",
+      price: "Rp 35.000",
       description: "Great post-workout drink with high protein and natural energy.",
     },
     {
@@ -63,11 +79,12 @@ function App() {
       carbs: "20g",
       fat: "1g",
       extra: "Vitamin C: High",
+      price: "Rp 38.000",
       description: "Low-calorie drink packed with vitamins and antioxidants.",
     },
   ];
 
-  // ================= CURRENT SLIDE =================
+  // ================= HERO NUTRITION SLIDER LOGIC =================
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const nextSlide = () => {
@@ -85,56 +102,66 @@ function App() {
   const currentItem = nutritionItems[currentIndex];
 
   return (
-    <div className="min-h-screen bg-white text-black font-sans">
+    <div className="min-h-screen bg-white text-black font-sans selection:bg-red-700 selection:text-white">
       
-      {/* ================= NAVBAR ================= */}
-      <div className="w-full flex items-center justify-between px-16 py-6 absolute top-0 left-0 z-20">
-        {/* Website title */}
+      {/* ================= FIXED PERSISTENT NAVIGATION BAR ================= */}
+      <nav 
+        className={`w-full flex items-center justify-between px-16 py-4 fixed top-0 left-0 z-50 transition-all duration-300 ${
+          isScrolled || currentPage !== "home"
+            ? "bg-black/90 backdrop-blur-md shadow-lg py-3" 
+            : "bg-transparent py-6"
+        }`}
+      >
+        {/* Logo / Brand Title */}
         <h1 
-          className="text-4xl font-bold italic text-white cursor-pointer"
+          className="text-4xl font-bold italic text-white cursor-pointer select-none"
           onClick={() => setCurrentPage("home")}
         >
           Seouhungry
         </h1>
 
-        {/* Navigation links */}
-        <ul className="flex gap-8 font-medium text-white items-center">
-          <li 
-            className={`cursor-pointer px-4 py-2 rounded-full transition ${currentPage === "home" ? "bg-white text-black" : "hover:text-gray-300"}`}
-            onClick={() => setCurrentPage("home")}
-          >
-            Home
-          </li>
-          <li className="cursor-pointer hover:text-gray-300">About</li>
-          <li className="cursor-pointer hover:text-gray-300">Menu</li>
-          <li className="cursor-pointer hover:text-gray-300">Pages</li>
-          <li className="cursor-pointer hover:text-gray-300">Contact</li>
+        {/* Dynamic Navigation Links */}
+        <ul className="flex gap-4 font-medium text-white items-center">
+          {["home", "about", "menu", "contact"].map((tab) => (
+            <li 
+              key={tab}
+              className={`cursor-pointer px-5 py-2 rounded-full capitalize transition duration-200 select-none ${
+                currentPage === tab 
+                  ? "bg-white text-black font-semibold shadow-md" 
+                  : "hover:bg-white/10 text-gray-200"
+              }`}
+              onClick={() => setCurrentPage(tab)}
+            >
+              {tab}
+            </li>
+          ))}
         </ul>
 
-        {/* Navbar button altered to Sign In */}
+        {/* Primary Auth Action Trigger */}
         <button 
           onClick={() => setCurrentPage("login")}
-          className="border border-white text-white px-6 py-3 rounded-full hover:bg-white hover:text-black transition font-medium"
+          className={`border px-6 py-2.5 rounded-full transition font-medium text-sm ${
+            currentPage === "login" || currentPage === "register"
+              ? "bg-white text-black border-white shadow-md"
+              : "border-white text-white hover:bg-white hover:text-black"
+          }`}
         >
           Sign In
         </button>
-      </div>
+      </nav>
 
-      {/* ================= CONDITIONAL RENDERING FOR PAGES ================= */}
-      
+      {/* ================= HERO & LANDING SUB-SECTIONS (HOME VIEW) ================= */}
       {currentPage === "home" && (
         <>
-          {/* ================= HERO SECTION ================= */}
+          {/* Hero Masthead Banner */}
           <div
             className="min-h-screen bg-cover bg-center relative flex items-center justify-center text-center"
             style={{
               backgroundImage: "url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1974&auto=format&fit=crop')",
             }}
           >
-            {/* Dark overlay */}
             <div className="absolute inset-0 bg-black/60"></div>
 
-            {/* Hero content */}
             <div className="relative z-10 px-5 max-w-4xl">
               <h1 className="text-6xl md:text-6xl font-serif leading-tight text-white">
                 Know what you eat, eat what you love
@@ -143,17 +170,17 @@ function App() {
                 Discover the best food and drinks in town. From traditional dishes to modern cuisine, selected with care and served with perfection.
               </p>
               <div className="mt-10 flex gap-6 justify-center">
-                <button className="bg-red-700 text-white px-8 py-4 rounded-full hover:bg-red-800 transition">
-                  Book A Table
-                </button>
-                <button className="border border-white text-white px-8 py-4 rounded-full hover:bg-white hover:text-black transition">
+                <button 
+                  onClick={() => setCurrentPage("menu")} 
+                  className="bg-red-700 text-white px-8 py-4 rounded-full hover:bg-red-800 transition"
+                >
                   Explore Menu
                 </button>
               </div>
             </div>
           </div>
 
-          {/* ================= WHY US SECTION ================= */}
+          {/* Value Proposition Grid */}
           <section className="py-24 px-10 bg-gray-50">
             <h1 className="text-5xl font-bold text-center mb-6">
               What Makes Our Service Different?
@@ -163,7 +190,7 @@ function App() {
             </p>
           </section>
 
-          {/* ================= NUTRITION SLIDER SECTION ================= */}
+          {/* Nutritional Highlights Multi-item Slider */}
           <section className="py-24 bg-white">
             <h1 className="text-5xl font-bold text-center mb-16">
               Nutritional Food & Drinks
@@ -183,15 +210,16 @@ function App() {
                   className="w-full md:w-[500px] h-[500px] object-cover"
                 />
                 <div className="p-12 flex flex-col justify-center">
-                  <h2 className="text-4xl font-bold mb-8">{currentItem.title}</h2>
+                  <h2 className="text-4xl font-bold mb-4">{currentItem.title}</h2>
+                  <p className="text-2xl font-bold text-red-700 mb-6">{currentItem.price}</p>
                   <div className="space-y-4 text-lg text-gray-700">
                     <p><span className="font-bold">Calories:</span> {currentItem.calories}</p>
                     <p><span className="font-bold">Protein:</span> {currentItem.protein}</p>
                     <p><span className="font-bold">Carbohydrates:</span> {currentItem.carbs}</p>
                     <p><span className="font-bold">Fat:</span> {currentItem.fat}</p>
-                    <p><span className="font-bold">{currentItem.extra}</span></p>
+                    <p><span className="font-bold text-red-700">{currentItem.extra}</span></p>
                   </div>
-                  <p className="mt-8 text-lg text-gray-600 leading-relaxed">
+                  <p className="mt-6 text-lg text-gray-600 leading-relaxed">
                     {currentItem.description}
                   </p>
                 </div>
@@ -208,7 +236,97 @@ function App() {
         </>
       )}
 
-      {/* ================= SIGN IN (LOGIN) PAGE ================= */}
+      {/* ================= OPTIMIZED LAG-FREE MENU VIEW ================= */}
+      {currentPage === "menu" && (
+        <div 
+          className="min-h-screen pt-32 pb-24 bg-cover bg-center bg-scroll relative"
+          style={{
+            backgroundImage: "url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1974&auto=format&fit=crop')",
+          }}
+        >
+          {/* Dark Overlay - removed backdrop-blur to boost frame rate rendering performance */}
+          <div className="absolute inset-0 bg-neutral-950/85"></div>
+
+          <div className="max-w-7xl mx-auto px-8 relative z-10">
+            <header className="text-center mb-16">
+              <h1 className="text-5xl font-serif font-bold text-white mb-4">Our Healthy Menu</h1>
+              <p className="text-gray-400 text-lg max-w-xl mx-auto">
+                Delicious local cuisine balanced with clear macro info. Premium taste, budget-friendly prices.
+              </p>
+            </header>
+
+            {/* Menu Structural Layout Interface */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {nutritionItems.map((item, index) => (
+                <div 
+                  key={index} 
+                  className="bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col justify-between border border-gray-100"
+                >
+                  <div>
+                    {/* Item Cover Asset */}
+                    <div className="relative h-56 w-full">
+                      <img 
+                        src={item.image} 
+                        alt={item.title} 
+                        className="w-full h-full object-cover"
+                      />
+                      <span className="absolute top-4 right-4 bg-red-700 text-white font-bold px-4 py-1.5 rounded-full text-sm shadow">
+                        {item.price}
+                      </span>
+                    </div>
+
+                    {/* Metadata Specs Segment */}
+                    <div className="p-6">
+                      <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-1">{item.title}</h3>
+                      <p className="text-xs text-gray-500 mb-4 leading-relaxed line-clamp-2">{item.description}</p>
+                      
+                      {/* Vertical Structured Macro Stack */}
+                      <div className="bg-gray-50 p-4 rounded-2xl space-y-2 text-xs border border-gray-100/80">
+                        <div className="flex justify-between"><span className="text-gray-500 font-medium">Energy:</span><span className="font-bold text-gray-900">{item.calories}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-500 font-medium">Protein:</span><span className="font-semibold text-emerald-700">{item.protein}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-500 font-medium">Carbs:</span><span className="font-semibold text-amber-700">{item.carbs}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-500 font-medium">Fats:</span><span className="font-semibold text-blue-700">{item.fat}</span></div>
+                        <div className="pt-1.5 mt-1 border-t border-gray-200/60 text-center text-red-700 font-bold tracking-wide bg-red-50 rounded-lg py-0.5">{item.extra}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Operational Controls Footer */}
+                  <div className="p-6 pt-0">
+                    <button 
+                      onClick={() => alert(`${item.title} added to draft checkout!`)}
+                      className="w-full bg-red-700 text-white font-medium py-3 rounded-2xl hover:bg-red-800 transition active:scale-[0.98] shadow-md shadow-red-900/10"
+                    >
+                      Add to Cart
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= PLACEHOLDER VIEWS FOR MISSING MVP SEGMENTS ================= */}
+      {(currentPage === "about" || currentPage === "contact") && (
+        <div className="min-h-screen pt-32 flex flex-col items-center justify-center bg-gray-50 px-6">
+          <div className="bg-white p-12 rounded-3xl shadow-xl max-w-lg text-center border border-gray-100">
+            <span className="text-5xl mb-4 block">📍</span>
+            <h2 className="text-3xl font-serif font-bold capitalize text-gray-900 mb-3">{currentPage} Prototype Profile</h2>
+            <p className="text-gray-600 leading-relaxed mb-6">
+              This space acts as an illustrative block for your Seouhungry MVP layout. Active page route detection flags this link correctly.
+            </p>
+            <button 
+              onClick={() => setCurrentPage("home")} 
+              className="bg-black text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-gray-800 transition"
+            >
+              Return Home
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ================= SIGN IN (LOGIN) FORM VIEW ================= */}
       {currentPage === "login" && (
         <div 
           className="min-h-screen bg-cover bg-center flex items-center justify-center px-4 relative"
@@ -276,7 +394,7 @@ function App() {
         </div>
       )}
 
-      {/* ================= REGISTER (SIGN UP) PAGE ================= */}
+      {/* ================= REGISTER (SIGN UP) FORM VIEW ================= */}
       {currentPage === "register" && (
         <div 
           className="min-h-screen bg-cover bg-center flex items-center justify-center px-4 relative"
