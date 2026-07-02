@@ -1,11 +1,18 @@
 import { useState, useEffect } from "react";
 
 function App() {
-  // ================= STATE FOR PROTOTYPE NAVIGATION =================
+  // ================= STATE FOR PROTOTYPE NAVIGATION & AUTH =================
   const [currentPage, setCurrentPage] = useState("home");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  
+  // Core functional state hooks
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [cart, setCart] = useState([]);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState("login"); // "login" or "register"
+  const [isCartOpen, setIsCartOpen] = useState(false); // Controls the cart overlay view
 
   // Track scroll state to transition fixed navbar styling
   const [isScrolled, setIsScrolled] = useState(false);
@@ -23,16 +30,64 @@ function App() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // ================= AUTHENTICATION HANDLERS =================
   const handleLoginSubmit = (e) => {
     e.preventDefault();
+    setIsLoggedIn(true);
+    setIsAuthModalOpen(false); 
     alert(`Logged in successfully as: ${email}`);
-    setCurrentPage("home");
   };
 
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
-    alert(`Account created successfully for: ${name}`);
-    setCurrentPage("login");
+    alert(`Account created successfully for: ${name}. You can now sign in.`);
+    setAuthMode("login"); 
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCart([]); 
+    setIsCartOpen(false);
+    setEmail("");
+    setPassword("");
+    setName("");
+    alert("Logged out successfully.");
+    setCurrentPage("home");
+  };
+
+  // ================= CART ACTION HANDLERS =================
+  const handleAddToCart = (item) => {
+    if (!isLoggedIn) {
+      alert("You must login/signup first for transaction");
+      setAuthMode("login");
+      setIsAuthModalOpen(true); 
+    } else {
+      // Generate unique instance ID for tracking duplicate menu items safely
+      const uniqueCartItem = { ...item, cartId: Date.now() + Math.random() };
+      setCart((prevCart) => [...prevCart, uniqueCartItem]);
+      alert(`🛒 ${item.title} added to your cart!`);
+    }
+  };
+
+  const handleRemoveFromCart = (cartId) => {
+    setCart((prevCart) => prevCart.filter((item) => item.cartId !== cartId));
+  };
+
+  const handleCheckout = () => {
+    alert(`🎉 Order placed successfully! Thank you for ordering with Seouhungry.`);
+    setCart([]); // Clear out cart
+    setIsCartOpen(false); // Close cart view panel
+  };
+
+  // Helper utility to calculate dynamic cost totals automatically from formatted IDR values
+  const calculateTotalCost = () => {
+    const sum = cart.reduce((acc, item) => {
+      // Strips non-digits out of prices like "Rp 42.000" to evaluate raw integer mathematical accumulation
+      const rawPrice = parseInt(item.price.replace(/[^\d]/g, ""), 10);
+      return acc + rawPrice;
+    }, 0);
+    
+    return "Rp " + sum.toLocaleString("id-ID");
   };
 
   // ================= EXTENDED DATABASE WITH IDR PRICING =================
@@ -101,11 +156,11 @@ function App() {
   const currentItem = nutritionItems[currentIndex];
 
   return (
-    <div className="min-h-screen bg-white text-black font-sans selection:bg-red-700 selection:text-white">
+    <div className="min-h-screen bg-white text-black font-sans selection:bg-red-700 selection:text-white relative">
       
       {/* ================= RESPONSIVE FIXED NAVIGATION BAR ================= */}
       <nav 
-        className={`w-full flex flex-col sm:flex-row items-center justify-between px-6 md:px-16 py-4 fixed top-0 left-0 z-50 transition-all duration-300 gap-4 sm:gap-0 ${
+        className={`w-full flex flex-col sm:flex-row items-center justify-between px-6 md:px-16 py-4 fixed top-0 left-0 z-40 transition-all duration-300 gap-4 sm:gap-0 ${
           isScrolled || currentPage !== "home"
             ? "bg-black/95 backdrop-blur-md shadow-lg py-3" 
             : "bg-transparent py-6"
@@ -119,7 +174,7 @@ function App() {
           Seouhungry
         </h1>
 
-        {/* Dynamic Navigation Links - Wraps elegantly on tiny viewports */}
+        {/* Dynamic Navigation Links */}
         <ul className="flex flex-wrap justify-center gap-2 md:gap-4 font-medium text-white items-center">
           {["home", "about", "menu", "contact"].map((tab) => (
             <li 
@@ -136,23 +191,28 @@ function App() {
           ))}
         </ul>
 
-        {/* Primary Auth Action Trigger */}
-        <button 
-          onClick={() => setCurrentPage("login")}
-          className={`border px-5 md:px-6 py-2 rounded-full transition font-medium text-xs md:text-sm ${
-            currentPage === "login" || currentPage === "register"
-              ? "bg-white text-black border-white shadow-md"
-              : "border-white text-white hover:bg-white hover:text-black"
-          }`}
-        >
-          Sign In
-        </button>
+        {/* Utility Actions Stack */}
+        <div className="flex items-center gap-3">
+          {isLoggedIn && (
+            <button 
+              onClick={() => setIsCartOpen(true)}
+              className="text-white bg-red-700 hover:bg-red-800 border border-red-700 px-4 py-2 rounded-full text-xs md:text-sm font-semibold transition flex items-center gap-1 shadow-md"
+            >
+              🛒 Cart ({cart.length})
+            </button>
+          )}
+          <button 
+            onClick={isLoggedIn ? handleLogout : () => { setAuthMode("login"); setIsAuthModalOpen(true); }}
+            className="border px-5 md:px-6 py-2 rounded-full transition font-medium text-xs md:text-sm border-white text-white hover:bg-white hover:text-black"
+          >
+            {isLoggedIn ? "Sign Out" : "Sign In"}
+          </button>
+        </div>
       </nav>
 
       {/* ================= HERO & LANDING SUB-SECTIONS (HOME VIEW) ================= */}
       {currentPage === "home" && (
         <>
-          {/* Hero Masthead Banner */}
           <div
             className="min-h-screen bg-cover bg-center relative flex items-center justify-center text-center px-4"
             style={{
@@ -171,7 +231,7 @@ function App() {
               <div className="mt-8 sm:mt-10 flex gap-4 sm:gap-6 justify-center">
                 <button 
                   onClick={() => setCurrentPage("menu")} 
-                  className="bg-red-700 text-white text-sm sm:text-base px-6 sm:text-lg sm:px-8 py-3 sm:py-4 rounded-full hover:bg-red-800 transition shadow-lg"
+                  className="bg-red-700 text-white text-sm sm:text-base px-6 sm:px-8 py-3 sm:py-4 rounded-full hover:bg-red-800 transition shadow-lg"
                 >
                   Explore Menu
                 </button>
@@ -179,7 +239,6 @@ function App() {
             </div>
           </div>
 
-          {/* Value Proposition Grid */}
           <section className="py-16 md:py-24 px-6 md:px-10 bg-gray-50">
             <h2 className="text-3xl md:text-5xl font-bold text-center mb-6">
               What Makes Our Service Different?
@@ -189,16 +248,12 @@ function App() {
             </p>
           </section>
 
-          {/* Nutritional Highlights Multi-item Slider */}
           <section className="py-16 md:py-24 bg-white px-4">
             <h2 className="text-3xl md:text-5xl font-bold text-center mb-10 md:mb-16">
               Nutritional Food & Drinks
             </h2>
             
-            {/* Flex Container rearranges layout stack ordering on phones vs desktop screen widths */}
             <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 max-w-6xl mx-auto">
-              
-              {/* Main Content Showcase Panel */}
               <div className="w-full bg-gray-50 rounded-3xl shadow-xl overflow-hidden flex flex-col md:flex-row">
                 <img
                   src={currentItem.image}
@@ -219,34 +274,38 @@ function App() {
                   <p className="text-xs sm:text-sm font-bold text-red-700 bg-red-50 px-3 py-1.5 rounded-xl self-start mb-4">
                     {currentItem.extra}
                   </p>
-                  <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
+                  <p className="text-sm sm:text-base text-gray-600 leading-relaxed mb-6">
                     {currentItem.description}
                   </p>
+                  <button 
+                    onClick={() => handleAddToCart(currentItem)}
+                    className="bg-red-700 text-white text-sm px-6 py-3 rounded-xl hover:bg-red-800 transition shadow md:self-start"
+                  >
+                    Add to Cart
+                  </button>
                 </div>
               </div>
 
-              {/* Slider Controls Container Position Adjustments */}
               <div className="flex gap-4 mt-4 md:mt-0 order-last md:order-none w-full md:w-auto justify-center">
                 <button
                   onClick={prevSlide}
                   className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-red-700 text-white text-xl sm:text-2xl flex items-center justify-center hover:bg-red-800 transition shadow-lg"
                 >
-                  ←
+                  &larr;
                 </button>
                 <button
                   onClick={nextSlide}
                   className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-red-700 text-white text-xl sm:text-2xl flex items-center justify-center hover:bg-red-800 transition shadow-lg"
                 >
-                  →
+                  &rarr;
                 </button>
               </div>
-
             </div>
           </section>
         </>
       )}
 
-      {/* ================= RESPONSIVE LAG-FREE MENU VIEW ================= */}
+      {/* ================= RESPONSIVE MENU VIEW ================= */}
       {currentPage === "menu" && (
         <div 
           className="min-h-screen pt-40 sm:pt-32 pb-24 bg-cover bg-center bg-scroll relative"
@@ -264,7 +323,6 @@ function App() {
               </p>
             </header>
 
-            {/* Menu Structural Layout Interface adapts columns per screen breakdown definitions */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
               {nutritionItems.map((item, index) => (
                 <div 
@@ -272,24 +330,17 @@ function App() {
                   className="bg-white rounded-3xl overflow-hidden shadow-xl flex flex-col justify-between border border-gray-100"
                 >
                   <div>
-                    {/* Item Cover Asset */}
                     <div className="relative h-48 sm:h-56 w-full">
-                      <img 
-                        src={item.image} 
-                        alt={item.title} 
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
                       <span className="absolute top-4 right-4 bg-red-700 text-white font-bold px-3 py-1 rounded-full text-xs sm:text-sm shadow">
                         {item.price}
                       </span>
                     </div>
 
-                    {/* Metadata Specs Segment */}
                     <div className="p-5 sm:p-6">
                       <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2 line-clamp-1">{item.title}</h3>
                       <p className="text-xs text-gray-500 mb-4 leading-relaxed line-clamp-2">{item.description}</p>
                       
-                      {/* Vertical Structured Macro Stack */}
                       <div className="bg-gray-50 p-3 sm:p-4 rounded-2xl space-y-2 text-xs border border-gray-100/80">
                         <div className="flex justify-between"><span className="text-gray-500 font-medium">Energy:</span><span className="font-bold text-gray-900">{item.calories}</span></div>
                         <div className="flex justify-between"><span className="text-gray-500 font-medium">Protein:</span><span className="font-semibold text-emerald-700">{item.protein}</span></div>
@@ -300,10 +351,9 @@ function App() {
                     </div>
                   </div>
 
-                  {/* Operational Controls Footer */}
                   <div className="p-5 sm:p-6 pt-0">
                     <button 
-                      onClick={() => alert(`${item.title} added to draft checkout!`)}
+                      onClick={() => handleAddToCart(item)}
                       className="w-full bg-red-700 text-white font-medium py-2.5 sm:py-3 rounded-2xl hover:bg-red-800 transition active:scale-[0.98] text-sm"
                     >
                       Add to Cart
@@ -316,7 +366,7 @@ function App() {
         </div>
       )}
 
-      {/* ================= PLACEHOLDER VIEWS FOR MISSING MVP SEGMENTS ================= */}
+      {/* ================= PLACEHOLDER VIEWS FOR ABOUT/CONTACT ================= */}
       {(currentPage === "about" || currentPage === "contact") && (
         <div className="min-h-screen pt-32 flex flex-col items-center justify-center bg-gray-50 px-4 sm:px-6">
           <div className="bg-white p-8 sm:p-12 rounded-3xl shadow-xl max-w-lg text-center border border-gray-100">
@@ -325,159 +375,178 @@ function App() {
             <p className="text-sm sm:text-base text-gray-600 leading-relaxed mb-6">
               This space acts as an illustrative block for your Seouhungry MVP layout. Active page route detection flags this link correctly.
             </p>
-            <button 
-              onClick={() => setCurrentPage("home")} 
-              className="bg-black text-white px-6 py-2.5 rounded-full text-xs sm:text-sm font-medium hover:bg-gray-800 transition"
-            >
+            <button onClick={() => setCurrentPage("home")} className="bg-black text-white px-6 py-2.5 rounded-full text-xs sm:text-sm font-medium hover:bg-gray-800 transition">
               Return Home
             </button>
           </div>
         </div>
       )}
 
-      {/* ================= SIGN IN (LOGIN) FORM VIEW ================= */}
-      {currentPage === "login" && (
-        <div 
-          className="min-h-screen bg-cover bg-center flex items-center justify-center px-4 relative"
-          style={{
-            backgroundImage: "url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1974&auto=format&fit=crop')",
-          }}
-        >
-          <div className="absolute inset-0 bg-black/70"></div>
-          
-          <div className="bg-white/95 backdrop-blur-sm p-6 sm:p-10 rounded-3xl shadow-2xl max-w-md w-full relative z-10 mt-24 sm:mt-20">
-            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-center text-gray-900 mb-1">Welcome Back</h2>
-            <p className="text-xs sm:text-sm text-gray-600 text-center mb-6 sm:text-8">Please enter your details to sign in</p>
-            
-            <form onSubmit={handleLoginSubmit} className="space-y-4 sm:space-y-5">
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Email Address</label>
-                <input 
-                  type="email" 
-                  required
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 sm:py-3 text-sm rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-700 transition"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Password</label>
-                <input 
-                  type="password" 
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 sm:py-3 text-sm rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-700 transition"
-                />
-              </div>
+      {/* ================= INLINE REUSABLE AUTH MODAL ================= */}
+      {isAuthModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white p-6 sm:p-10 rounded-3xl shadow-2xl max-w-md w-full relative">
+            <button 
+              onClick={() => setIsAuthModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl font-bold bg-gray-100 h-8 w-8 rounded-full flex items-center justify-center transition"
+            >
+              &times;
+            </button>
 
-              <div className="flex items-center justify-between text-xs sm:text-sm pt-1">
-                <label className="flex items-center gap-2 cursor-pointer text-gray-600">
-                  <input type="checkbox" className="rounded text-red-700 focus:ring-red-700 text-xs" />
-                  Remember me
-                </label>
-                <a href="#" className="text-red-700 hover:underline font-medium">Forgot password?</a>
-              </div>
-              
-              <button 
-                type="submit"
-                className="w-full bg-red-700 text-white py-3 sm:py-3.5 rounded-xl font-medium hover:bg-red-800 transition mt-4 shadow-md text-sm"
-              >
-                Sign In
-              </button>
-            </form>
-            
-            <p className="text-center text-gray-600 text-xs sm:text-sm mt-6 sm:text-8">
-              Don't have an account?{" "}
-              <button 
-                onClick={() => setCurrentPage("register")}
-                className="text-red-700 font-bold hover:underline"
-              >
-                Sign up free
-              </button>
-            </p>
+            {authMode === "login" ? (
+              <>
+                <h2 className="text-2xl sm:text-3xl font-serif font-bold text-center text-gray-900 mb-1">Welcome Back</h2>
+                <p className="text-xs sm:text-sm text-gray-600 text-center mb-6">Please enter your details to sign in and place your order</p>
+                
+                <form onSubmit={handleLoginSubmit} className="space-y-4 sm:space-y-5">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Email Address</label>
+                    <input 
+                      type="email" required placeholder="name@example.com" value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full px-4 py-2.5 sm:py-3 text-sm rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-700 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Password</label>
+                    <input 
+                      type="password" required placeholder="••••••••" value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-4 py-2.5 sm:py-3 text-sm rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-700 transition"
+                    />
+                  </div>
+                  <button type="submit" className="w-full bg-red-700 text-white py-3 sm:py-3.5 rounded-xl font-medium hover:bg-red-800 transition mt-4 shadow-md text-sm">
+                    Sign In
+                  </button>
+                </form>
+                <p className="text-center text-gray-600 text-xs sm:text-sm mt-6">
+                  Don't have an account?{" "}
+                  <button onClick={() => setAuthMode("register")} className="text-red-700 font-bold hover:underline">
+                    Sign up free
+                  </button>
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl sm:text-3xl font-serif font-bold text-center text-gray-900 mb-1">Create Account</h2>
+                <p className="text-xs sm:text-sm text-gray-600 text-center mb-6">Join Seouhungry today and start tracking nutrition</p>
+                
+                <form onSubmit={handleRegisterSubmit} className="space-y-4 sm:space-y-5">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Full Name</label>
+                    <input 
+                      type="text" required placeholder="John Doe" value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-4 py-2.5 sm:py-3 text-sm rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-700 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Email Address</label>
+                    <input 
+                      type="email" required placeholder="name@example.com" value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full px-4 py-2.5 sm:py-3 text-sm rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-700 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Password</label>
+                    <input 
+                      type="password" required placeholder="••••••••" value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-4 py-2.5 sm:py-3 text-sm rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-700 transition"
+                    />
+                  </div>
+                  <button type="submit" className="w-full bg-red-700 text-white py-3 sm:py-3.5 rounded-xl font-medium hover:bg-red-800 transition mt-4 shadow-md text-sm">
+                    Create Account
+                  </button>
+                </form>
+                <p className="text-center text-gray-600 text-xs sm:text-sm mt-6">
+                  Already have an account?{" "}
+                  <button onClick={() => setAuthMode("login")} className="text-red-700 font-bold hover:underline">
+                    Sign In
+                  </button>
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {/* ================= REGISTER (SIGN UP) FORM VIEW ================= */}
-      {currentPage === "register" && (
-        <div 
-          className="min-h-screen bg-cover bg-center flex items-center justify-center px-4 relative"
-          style={{
-            backgroundImage: "url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1974&auto=format&fit=crop')",
-          }}
-        >
-          <div className="absolute inset-0 bg-black/70"></div>
-          
-          <div className="bg-white/95 backdrop-blur-sm p-6 sm:p-10 rounded-3xl shadow-2xl max-w-md w-full relative z-10 mt-24 sm:mt-20">
-            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-center text-gray-900 mb-1">Create Account</h2>
-            <p className="text-xs sm:text-sm text-gray-600 text-center mb-6 sm:text-8">Join Seouhungry today and start tracking nutrition</p>
-            
-            <form onSubmit={handleRegisterSubmit} className="space-y-4 sm:space-y-5">
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Full Name</label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="John Doe"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-2.5 sm:py-3 text-sm rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-700 transition"
-                />
+      {/* ================= ACTIVE SHOPPING CART OVERLAY DRAWER ================= */}
+      {isCartOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/75 backdrop-blur-sm">
+          <div className="bg-white h-full w-full max-w-md shadow-2xl flex flex-col justify-between p-6 overflow-y-auto animate-slide-in">
+            <div>
+              {/* Header section */}
+              <div className="flex items-center justify-between pb-4 border-b border-gray-200 mb-6">
+                <h2 className="text-2xl font-serif font-bold text-gray-900">Your Placed Cart Items</h2>
+                <button 
+                  onClick={() => setIsCartOpen(false)}
+                  className="text-gray-400 hover:text-black font-bold bg-gray-100 h-8 w-8 rounded-full flex items-center justify-center transition"
+                >
+                  &times;
+                </button>
               </div>
 
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Email Address</label>
-                <input 
-                  type="email" 
-                  required
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 sm:py-3 text-sm rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-700 transition"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Password</label>
-                <input 
-                  type="password" 
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 sm:py-3 text-sm rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-700 transition"
-                />
-              </div>
+              {/* Items Listing */}
+              {cart.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <span className="text-5xl mb-3 block">📥</span>
+                  <p className="font-medium">Your shopping cart is currently empty.</p>
+                  <p className="text-xs text-gray-400 mt-1">Explore our healthy menus to add meals here!</p>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                  {cart.map((item) => (
+                    <div 
+                      key={item.cartId}
+                      className="flex gap-4 bg-gray-50 p-3 rounded-2xl border border-gray-100 items-center justify-between"
+                    >
+                      <div className="flex gap-3 items-center">
+                        <img 
+                          src={item.image} 
+                          alt={item.title} 
+                          className="w-16 h-16 object-cover rounded-xl shadow-sm border border-white"
+                        />
+                        <div>
+                          <h4 className="font-bold text-sm text-gray-900 line-clamp-1">{item.title}</h4>
+                          <p className="text-xs font-semibold text-red-700 mt-0.5">{item.price}</p>
+                          <p className="text-[10px] text-gray-400 mt-0.5">🔥 {item.calories}</p>
+                        </div>
+                      </div>
+                      
+                      <button 
+                        onClick={() => handleRemoveFromCart(item.cartId)}
+                        className="text-gray-400 hover:text-red-700 transition font-medium text-xs bg-white hover:bg-red-50 p-2 rounded-xl border border-gray-200/60 shadow-sm"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-              <div className="flex items-start text-xs sm:text-sm pt-1">
-                <label className="flex items-start gap-2 cursor-pointer text-gray-600 text-left">
-                  <input type="checkbox" required className="mt-1 rounded text-red-700 focus:ring-red-700 text-xs" />
-                  <span>I agree to the <a href="#" className="text-red-700 hover:underline">Terms of Service</a> and <a href="#" className="text-red-700 hover:underline">Privacy Policy</a></span>
-                </label>
+            {/* Total summary calculations and submission footer block */}
+            {cart.length > 0 && (
+              <div className="pt-6 border-t border-gray-200 bg-white">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-gray-600 font-medium">Estimated Total:</span>
+                  <span className="text-2xl font-serif font-bold text-red-700">{calculateTotalCost()}</span>
+                </div>
+                
+                <p className="text-[11px] text-gray-400 mb-4 leading-relaxed">
+                  *This checkout session is mock state data storage. Closing your browser window instance or refreshing clears memory records.
+                </p>
+
+                <button 
+                  onClick={handleCheckout}
+                  className="w-full bg-red-700 hover:bg-red-800 text-white font-semibold py-3.5 rounded-2xl shadow-lg transition active:scale-[0.99] text-center"
+                >
+                  Place Transaction Order
+                </button>
               </div>
-              
-              <button 
-                type="submit"
-                className="w-full bg-red-700 text-white py-3 sm:py-3.5 rounded-xl font-medium hover:bg-red-800 transition mt-4 shadow-md text-sm"
-              >
-                Create Account
-              </button>
-            </form>
-            
-            <p className="text-center text-gray-600 text-xs sm:text-sm mt-6 sm:text-8">
-              Already have an account?{" "}
-              <button 
-                onClick={() => setCurrentPage("login")}
-                className="text-red-700 font-bold hover:underline"
-              >
-                Sign In
-              </button>
-            </p>
+            )}
           </div>
         </div>
       )}
