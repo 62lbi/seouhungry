@@ -10,9 +10,11 @@ function App() {
   // Core functional state hooks
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [cart, setCart] = useState([]);
+  const [orders, setOrders] = useState([]); // Tracks historically placed orders
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState("login"); // "login" or "register"
-  const [isCartOpen, setIsCartOpen] = useState(false); // Controls the cart overlay view
+  const [isCartOpen, setIsCartOpen] = useState(false); // Controls active cart drawer overlay
+  const [isOrdersOpen, setIsOrdersOpen] = useState(false); // Controls order tracking drawer overlay
 
   // Track scroll state to transition fixed navbar styling
   const [isScrolled, setIsScrolled] = useState(false);
@@ -47,7 +49,9 @@ function App() {
   const handleLogout = () => {
     setIsLoggedIn(false);
     setCart([]); 
+    setOrders([]);
     setIsCartOpen(false);
+    setIsOrdersOpen(false);
     setEmail("");
     setPassword("");
     setName("");
@@ -55,14 +59,13 @@ function App() {
     setCurrentPage("home");
   };
 
-  // ================= CART ACTION HANDLERS =================
+  // ================= CART & ORDER ACTION HANDLERS =================
   const handleAddToCart = (item) => {
     if (!isLoggedIn) {
       alert("You must login/signup first for transaction");
       setAuthMode("login");
       setIsAuthModalOpen(true); 
     } else {
-      // Generate unique instance ID for tracking duplicate menu items safely
       const uniqueCartItem = { ...item, cartId: Date.now() + Math.random() };
       setCart((prevCart) => [...prevCart, uniqueCartItem]);
       alert(`🛒 ${item.title} added to your cart!`);
@@ -74,15 +77,34 @@ function App() {
   };
 
   const handleCheckout = () => {
-    alert(`🎉 Order placed successfully! Thank you for ordering with Seouhungry.`);
-    setCart([]); // Clear out cart
-    setIsCartOpen(false); // Close cart view panel
+    // Generate a structured new order entry
+    const newOrder = {
+      id: "SH-" + Math.floor(100000 + Math.random() * 900000),
+      items: [...cart],
+      total: calculateTotalCost(),
+      status: "Not Paid Yet", // Initial requested state
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setOrders((prevOrders) => [newOrder, ...prevOrders]);
+    setCart([]); // Reset active cart items
+    setIsCartOpen(false); 
+    setIsOrdersOpen(true); // Bring up orders panel to immediately see status
+    alert(`🎉 Order created successfully! Current Status: Not Paid Yet.`);
+  };
+
+  const handlePayOrder = (orderId) => {
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
+        order.id === orderId ? { ...order, status: "Paid" } : order
+      )
+    );
+    alert("💳 Payment mock accepted! Status updated to: Paid");
   };
 
   // Helper utility to calculate dynamic cost totals automatically from formatted IDR values
   const calculateTotalCost = () => {
     const sum = cart.reduce((acc, item) => {
-      // Strips non-digits out of prices like "Rp 42.000" to evaluate raw integer mathematical accumulation
       const rawPrice = parseInt(item.price.replace(/[^\d]/g, ""), 10);
       return acc + rawPrice;
     }, 0);
@@ -192,18 +214,26 @@ function App() {
         </ul>
 
         {/* Utility Actions Stack */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {isLoggedIn && (
-            <button 
-              onClick={() => setIsCartOpen(true)}
-              className="text-white bg-red-700 hover:bg-red-800 border border-red-700 px-4 py-2 rounded-full text-xs md:text-sm font-semibold transition flex items-center gap-1 shadow-md"
-            >
-              🛒 Cart ({cart.length})
-            </button>
+            <>
+              <button 
+                onClick={() => { setIsOrdersOpen(true); setIsCartOpen(false); }}
+                className="text-white bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 px-3 py-2 rounded-full text-xs font-semibold transition flex items-center gap-1 shadow"
+              >
+                📦 Orders ({orders.length})
+              </button>
+              <button 
+                onClick={() => { setIsCartOpen(true); setIsOrdersOpen(false); }}
+                className="text-white bg-red-700 hover:bg-red-800 border border-red-700 px-3 py-2 rounded-full text-xs font-semibold transition flex items-center gap-1 shadow font-medium"
+              >
+                🛒 Cart ({cart.length})
+              </button>
+            </>
           )}
           <button 
             onClick={isLoggedIn ? handleLogout : () => { setAuthMode("login"); setIsAuthModalOpen(true); }}
-            className="border px-5 md:px-6 py-2 rounded-full transition font-medium text-xs md:text-sm border-white text-white hover:bg-white hover:text-black"
+            className="border px-4 sm:px-6 py-2 rounded-full transition font-medium text-xs border-white text-white hover:bg-white hover:text-black"
           >
             {isLoggedIn ? "Sign Out" : "Sign In"}
           </button>
@@ -375,7 +405,7 @@ function App() {
             <p className="text-sm sm:text-base text-gray-600 leading-relaxed mb-6">
               This space acts as an illustrative block for your Seouhungry MVP layout. Active page route detection flags this link correctly.
             </p>
-            <button onClick={() => setCurrentPage("home")} className="bg-black text-white px-6 py-2.5 rounded-full text-xs sm:text-sm font-medium hover:bg-gray-800 transition">
+            <button onClick={() => setCurrentPage("home")} className="bg-black text-white px-6 py-2.5 rounded-full text-xs font-medium hover:bg-gray-800 transition">
               Return Home
             </button>
           </div>
@@ -475,11 +505,10 @@ function App() {
       {/* ================= ACTIVE SHOPPING CART OVERLAY DRAWER ================= */}
       {isCartOpen && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/75 backdrop-blur-sm">
-          <div className="bg-white h-full w-full max-w-md shadow-2xl flex flex-col justify-between p-6 overflow-y-auto animate-slide-in">
+          <div className="bg-white h-full w-full max-w-md shadow-2xl flex flex-col justify-between p-6 overflow-y-auto">
             <div>
-              {/* Header section */}
               <div className="flex items-center justify-between pb-4 border-b border-gray-200 mb-6">
-                <h2 className="text-2xl font-serif font-bold text-gray-900">Your Placed Cart Items</h2>
+                <h2 className="text-2xl font-serif font-bold text-gray-900">Your Shopping Cart</h2>
                 <button 
                   onClick={() => setIsCartOpen(false)}
                   className="text-gray-400 hover:text-black font-bold bg-gray-100 h-8 w-8 rounded-full flex items-center justify-center transition"
@@ -488,12 +517,11 @@ function App() {
                 </button>
               </div>
 
-              {/* Items Listing */}
               {cart.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <span className="text-5xl mb-3 block">📥</span>
                   <p className="font-medium">Your shopping cart is currently empty.</p>
-                  <p className="text-xs text-gray-400 mt-1">Explore our healthy menus to add meals here!</p>
+                  <p className="text-xs text-gray-400 mt-1">Explore our menus to add healthy items!</p>
                 </div>
               ) : (
                 <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
@@ -503,21 +531,15 @@ function App() {
                       className="flex gap-4 bg-gray-50 p-3 rounded-2xl border border-gray-100 items-center justify-between"
                     >
                       <div className="flex gap-3 items-center">
-                        <img 
-                          src={item.image} 
-                          alt={item.title} 
-                          className="w-16 h-16 object-cover rounded-xl shadow-sm border border-white"
-                        />
+                        <img src={item.image} alt={item.title} className="w-16 h-16 object-cover rounded-xl border border-white" />
                         <div>
                           <h4 className="font-bold text-sm text-gray-900 line-clamp-1">{item.title}</h4>
                           <p className="text-xs font-semibold text-red-700 mt-0.5">{item.price}</p>
-                          <p className="text-[10px] text-gray-400 mt-0.5">🔥 {item.calories}</p>
                         </div>
                       </div>
-                      
                       <button 
                         onClick={() => handleRemoveFromCart(item.cartId)}
-                        className="text-gray-400 hover:text-red-700 transition font-medium text-xs bg-white hover:bg-red-50 p-2 rounded-xl border border-gray-200/60 shadow-sm"
+                        className="text-gray-400 hover:text-red-700 transition text-xs bg-white p-2 rounded-xl border border-gray-200"
                       >
                         Remove
                       </button>
@@ -527,24 +549,101 @@ function App() {
               )}
             </div>
 
-            {/* Total summary calculations and submission footer block */}
             {cart.length > 0 && (
               <div className="pt-6 border-t border-gray-200 bg-white">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-gray-600 font-medium">Estimated Total:</span>
                   <span className="text-2xl font-serif font-bold text-red-700">{calculateTotalCost()}</span>
                 </div>
-                
-                <p className="text-[11px] text-gray-400 mb-4 leading-relaxed">
-                  *This checkout session is mock state data storage. Closing your browser window instance or refreshing clears memory records.
-                </p>
-
                 <button 
                   onClick={handleCheckout}
-                  className="w-full bg-red-700 hover:bg-red-800 text-white font-semibold py-3.5 rounded-2xl shadow-lg transition active:scale-[0.99] text-center"
+                  className="w-full bg-red-700 hover:bg-red-800 text-white font-semibold py-3.5 rounded-2xl shadow-lg transition"
                 >
-                  Place Transaction Order
+                  Place Order (Not Paid Yet)
                 </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ================= TRACKED ORDERS HISTORY DRAWER OVERLAY ================= */}
+      {isOrdersOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/75 backdrop-blur-sm">
+          <div className="bg-white h-full w-full max-w-md shadow-2xl flex flex-col p-6 overflow-y-auto">
+            
+            {/* Header Section */}
+            <div className="flex items-center justify-between pb-4 border-b border-gray-200 mb-6">
+              <h2 className="text-2xl font-serif font-bold text-gray-900">Your Placed Orders</h2>
+              <button 
+                onClick={() => setIsOrdersOpen(false)}
+                className="text-gray-400 hover:text-black font-bold bg-gray-100 h-8 w-8 rounded-full flex items-center justify-center transition"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Orders Iterative List */}
+            {orders.length === 0 ? (
+              <div className="text-center py-12 text-gray-500 my-auto">
+                <span className="text-5xl mb-3 block">📦</span>
+                <p className="font-medium">No placed orders found yet.</p>
+                <p className="text-xs text-gray-400 mt-1">Once you check out from your active cart, orders appear here.</p>
+              </div>
+            ) : (
+              <div className="space-y-6 overflow-y-auto pr-1 flex-1">
+                {orders.map((order) => (
+                  <div 
+                    key={order.id} 
+                    className="bg-gray-50 rounded-2xl p-4 border border-gray-200 shadow-sm space-y-3"
+                  >
+                    {/* Top line ID information */}
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-bold text-gray-900 text-sm">{order.id}</h4>
+                        <p className="text-[11px] text-gray-400">Placed at {order.timestamp}</p>
+                      </div>
+                      
+                      {/* Dynamic color badges depending on custom order status state updates */}
+                      <span 
+                        className={`text-xs font-bold px-3 py-1 rounded-full ${
+                          order.status === "Paid"
+                            ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                            : "bg-amber-100 text-amber-800 border border-amber-200"
+                        }`}
+                      >
+                        {order.status}
+                      </span>
+                    </div>
+
+                    {/* Quick listing text for mini summaries inside order cards */}
+                    <div className="text-xs text-gray-600 border-t border-b border-gray-200/60 py-2 space-y-1">
+                      {order.items.map((item, idx) => (
+                        <div key={idx} className="flex justify-between">
+                          <span className="line-clamp-1">{item.title}</span>
+                          <span className="font-medium text-gray-900">{item.price}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Total cost display rows and simulate action click handler injections */}
+                    <div className="flex justify-between items-center pt-1">
+                      <div>
+                        <span className="text-[11px] text-gray-400 block font-medium">Total Amount</span>
+                        <span className="font-serif font-bold text-base text-gray-900">{order.total}</span>
+                      </div>
+                      
+                      {order.status === "Not Paid Yet" && (
+                        <button
+                          onClick={() => handlePayOrder(order.id)}
+                          className="bg-black hover:bg-neutral-800 text-white font-semibold text-xs px-4 py-2 rounded-xl transition shadow"
+                        >
+                          Simulate Payment
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
